@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeopardy! Tribute Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0d0d; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #ffffff;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: #1a1a1a; /* Slightly lighter dark */
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #ffd700; /* Gold */
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .score-board {
+            background-color: #0f0f0f;
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00ff00; /* Bright green for score */
+            border: 2px solid #00aa00;
+            margin-bottom: 20px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+        }
+
+        .category-title, .clue-box {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #ffd700;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+            min-height: 80px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .clue-box {
+            background: linear-gradient(145deg, #007bff, #0056b3); /* Blue for clues */
+            color: #ffffff;
+            font-size: 2rem;
+            cursor: pointer;
+            border: 2px solid #0056b3;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .clue-box:hover:not(.disabled) {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        /* New animation for selected clue */
+        @keyframes clue-flash {
+            0% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); }
+            50% { transform: scale(1.03); box-shadow: 0 0 25px 8px #ffd700, 0 0 10px rgba(0, 0, 0, 0.6); } /* Brighter gold glow */
+            100% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); }
+        }
+
+        .clue-box.active-selection {
+            animation: clue-flash 0.4s ease-out; /* Play once and stay for the duration */
+        }
+
+        .clue-box.disabled {
+            background: linear-gradient(145deg, #333333, #222222); /* Darker gray to indicate used */
+            color: #aaaaaa; /* Lighter gray text */
+            cursor: not-allowed;
+            text-decoration: none; /* Removed line-through */
+            opacity: 0.8; /* Slightly less opaque */
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5); /* Inset shadow */
+            transition: background 0.4s ease, color 0.4s ease, opacity 0.4s ease, box-shadow 0.4s ease; /* Smooth transition to disabled state */
+        }
+
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: #1a1a1a;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+            width: 90%;
+            max-width: 700px;
+            text-align: center;
+            border: 3px solid #ffd700;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2 {
+            font-size: 2.5rem;
+            color: #ffd700;
+            margin-bottom: 25px;
+            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content p {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+            line-height: 1.5;
+        }
+
+        .modal-content input[type="text"],
+        .modal-content input[type="number"] {
+            width: calc(100% - 40px);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            background-color: #0f0f0f;
+            color: #ffffff;
+            font-size: 1.5rem;
+            text-align: center;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content input[type="text"]::placeholder,
+        .modal-content input[type="number"]::placeholder {
+            color: #888;
+        }
+
+        .modal-content button {
+            background: linear-gradient(145deg, #00ff00, #00aa00);
+            color: #0f0f0f;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.6rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
+            transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .modal-content button:hover {
+            background: linear-gradient(145deg, #00aa00, #007700);
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 255, 0, 0.6);
+        }
+
+        .message-box {
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+            text-align: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            display: none; /* Hidden by default */
+            transition: opacity 0.3s ease;
+        }
+
+        .message-box button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: linear-gradient(145deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        #loading-indicator, #new-game-loading-indicator {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2rem;
+            z-index: 1002;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            text-align: center; /* Center text within loading indicator */
+        }
+
+        /* Test element for JS execution */
+        #js-test-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            background-color: red; /* Will turn green if JS runs */
+            border-radius: 50%;
+            display: none; /* Hidden until JS shows it */
+        }
+
+        /* SolSa Labs Branding Badge */
+        #solsa-badge {
+            position: fixed;
+            bottom: 10px; /* Closer to the bottom edge */
+            right: 10px; /* Closer to the right edge */
+            width: 60px; /* Tiny square */
+            height: 60px; /* Tiny square */
+            background-color: rgba(255, 255, 255, 0.15); /* Semi-transparent white */
+            backdrop-filter: blur(8px); /* Glassmorphism blur, slightly less intense */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px; /* Slightly smaller rounded corners */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtler shadow */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 0.6rem; /* Smaller font size */
+            color: #ffffff;
+            font-weight: 600;
+            line-height: 1.2;
+            z-index: 999; /* Ensure it floats above other content */
+            padding: 3px; /* Reduced padding */
+            box-sizing: border-box; /* Include padding in the width/height */
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            .score-board {
+                font-size: 1.2rem;
+                padding: 10px 15px;
+            }
+            .game-board {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            .category-title, .clue-box {
+                font-size: 1rem;
+                min-height: 60px;
+                padding: 10px;
+            }
+            .clue-box {
+                font-size: 1.5rem;
+            }
+            .modal-content {
+                padding: 20px;
+            }
+            .modal-content h2 {
+                font-size: 1.8rem;
+            }
+            .modal-content p {
+                font-size: 1.2rem;
+            }
+            .modal-content input, .modal-content button {
+                font-size: 1.2rem;
+                padding: 12px;
+            }
+            /* Adjusted for mobile */
+            #solsa-badge {
+                width: 50px; /* Even smaller for mobile */
+                height: 50px;
+                font-size: 0.5rem;
+                bottom: 5px;
+                right: 5px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-board {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            /* Further adjusted for very small screens */
+            #solsa-badge {
+                width: 45px;
+                height: 45px;
+                font-size: 0.45rem;
+                bottom: 5px;
+                right: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>JEOPARDY! Tribute</h1>
+        </div>
+
+        <div class="score-board">
+            <span>Score:</span>
+            <span id="player-score">$0</span>
+        </div>
+
+        <div id="game-board" class="game-board">
+            <!-- Categories and clues will be inserted here by JavaScript -->
+        </div>
+
+        <!-- Question/Answer Modal -->
+        <div id="question-modal-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <h2 id="modal-category"></h2>
+                <p id="modal-question"></p>
+                <input type="text" id="answer-input" placeholder="Type your answer here">
+                <button id="submit-answer-btn">Submit Answer</button>
+            </div>
+        </div>
+
+        <!-- Daily Double Modal -->
+        <div id="daily-double-modal-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <h2>Daily Double!</h2>
+                <p id="daily-double-question-text"></p>
+                <p>How much would you like to wager? (Current Score: <span id="daily-double-current-score">$0</span>)</p>
+                <input type="number" id="wager-input" placeholder="Enter wager" min="1">
+                <button id="submit-wager-btn">Submit Wager</button>
+                <div id="loading-indicator">Generating Daily Double Question...</div>
+            </div>
+        </div>
+
+        <!-- Final Jeopardy Modal -->
+        <div id="final-jeopardy-modal-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <h2>Final Jeopardy!</h2>
+                <p>Category: <span id="final-jeopardy-category-display"></span></p>
+                <p>How much would you like to wager? (Current Score: <span id="final-jeopardy-current-score">$0</span>)</p>
+                <input type="number" id="final-wager-input" placeholder="Enter wager" min="0">
+                <button id="submit-final-wager-btn">Submit Wager</button>
+            </div>
+        </div>
+
+        <!-- Final Jeopardy Question Modal (after wager) -->
+        <div id="final-jeopardy-question-modal-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <h2>Final Jeopardy!</h2>
+                <p id="final-jeopardy-question-display"></p>
+                <input type="text" id="final-answer-input" placeholder="Type your answer here">
+                <button id="submit-final-answer-btn">Submit Final Answer</button>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="game-over-modal-overlay" class="modal-overlay">
+            <div class="modal-content">
+                <h2>Game Over!</h2>
+                <p id="final-jeopardy-answer-display"></p>
+                <p id="final-score-display"></p>
+                <button id="play-again-btn">Play Again</button>
+                <div id="new-game-loading-indicator" class="loading-indicator" style="display:none; margin-top:20px;">Generating New Questions...</div>
+            </div>
+        </div>
+
+        <!-- Message Box (for custom alerts) -->
+        <div id="message-box" class="message-box">
+            <p id="message-text"></p>
+            <button id="message-ok-btn">OK</button>
+        </div>
+
+        <!-- JS Test Indicator -->
+        <div id="js-test-indicator"></div>
+
+        <!-- SolSa Labs Branding Badge -->
+        <div id="solsa-badge">
+            Created by<br>SolSa Labs
+        </div>
+    </div>
+
+    <script>
+        // Set up the JS test indicator
+        const jsTestIndicator = document.getElementById('js-test-indicator');
+        jsTestIndicator.style.display = 'block'; // Show it
+        jsTestIndicator.style.backgroundColor = 'green'; // Turn it green to confirm JS is running
+        console.log("JavaScript is running.");
+
+        // Default static game data (fallback if LLM generation is disabled or fails)
+        let gameData = [
+            {
+                category: "HISTORY",
+                clues: [
+                    { question: "Who was the first President of the United States?", answer: "George Washington", value: 200 },
+                    { question: "What year did the Titanic sink?", answer: "1912", value: 400 },
+                    { question: "In what country did the Industrial Revolution begin?", answer: "Great Britain", value: 600 },
+                    { question: "Who wrote 'The Prince'?", answer: "Niccolò Machiavelli", value: 800 },
+                    { question: "What ancient civilization built the pyramids of Giza?", answer: "Egyptians", value: 1000 }
+                ]
+            },
+            {
+                category: "SCIENCE",
+                clues: [
+                    { question: "What is the chemical symbol for water?", answer: "H2O", value: 200 },
+                    { question: "What planet is known as the Red Planet?", answer: "Mars", value: 400 },
+                    { question: "What is the powerhouse of the cell?", answer: "Mitochondria", value: 600 },
+                    { question: "What is the largest organ in the human body?", answer: "Skin", value: 800 },
+                    { question: "What type of energy is stored in a battery?", answer: "Chemical energy", value: 1000 }
+                ]
+            },
+            {
+                category: "LITERATURE",
+                clues: [
+                    { question: "Who wrote 'Romeo and Juliet'?", answer: "William Shakespeare", value: 200 },
+                    { question: "What is the setting for 'To Kill a Mockingbird'?", answer: "Maycomb, Alabama", value: 400 },
+                    { question: "Who is the author of '1984'?", answer: "George Orwell", value: 600 },
+                    { question: "What novel features the character 'Holden Caulfield'?", answer: "The Catcher in the Rye", value: 800 },
+                    { question: "Who wrote 'Pride and Prejudice'?", answer: "Jane Austen", value: 1000 }
+                ]
+            },
+            {
+                category: "GEOGRAPHY",
+                clues: [
+                    { question: "What is the capital of France?", answer: "Paris", value: 200 },
+                    { question: "What is the longest river in the world?", answer: "Nile River", value: 400 },
+                    { question: "Which mountain range separates Europe and Asia?", answer: "Ural Mountains", value: 600 },
+                    { question: "What is the smallest country in the world?", answer: "Vatican City", value: 800 },
+                    { question: "What is the deepest ocean trench?", answer: "Mariana Trench", value: 1000 }
+                ]
+            },
+            {
+                category: "POTPOURRI",
+                clues: [
+                    { question: "What is the currency of Japan?", answer: "Yen", value: 200 },
+                    { question: "How many legs does a spider have?", answer: "8", value: 400 },
+                    { question: "What is the largest land animal?", answer: "African Elephant", value: 600 },
+                    { question: "What is the most consumed manufactured drink in the world?", answer: "Tea", value: 800 },
+                    { question: "What is the chemical element with the symbol 'Fe'?", answer: "Iron", value: 1000 }
+                ]
+            }
+        ];
+
+        let score = 0;
+        let answeredQuestionsCount = 0;
+        let totalQuestions = 0; // Will be calculated dynamically
+        const dailyDoubleCount = 1; // Number of daily doubles per game
+        let dailyDoubleLocations = [];
+        let currentClue = null;
+        let currentWager = 0;
+        let isDailyDouble = false;
+        let isFinalJeopardy = false;
+        let clueElements = []; // Store references to clue box elements
+
+        // DOM Elements
+        const playerScoreEl = document.getElementById('player-score');
+        const gameBoardEl = document.getElementById('game-board');
+        const questionModalOverlay = document.getElementById('question-modal-overlay');
+        const modalCategoryEl = document.getElementById('modal-category');
+        const modalQuestionEl = document.getElementById('modal-question');
+        const answerInput = document.getElementById('answer-input');
+        const submitAnswerBtn = document.getElementById('submit-answer-btn');
+
+        const dailyDoubleModalOverlay = document.getElementById('daily-double-modal-overlay');
+        const dailyDoubleQuestionText = document.getElementById('daily-double-question-text');
+        const dailyDoubleCurrentScoreEl = document.getElementById('daily-double-current-score');
+        const wagerInput = document.getElementById('wager-input');
+        const submitWagerBtn = document.getElementById('submit-wager-btn');
+        const loadingIndicator = document.getElementById('loading-indicator'); // For Daily Double specific loading
+
+        const finalJeopardyModalOverlay = document.getElementById('final-jeopardy-modal-overlay');
+        const finalJeopardyCategoryDisplay = document.getElementById('final-jeopardy-category-display');
+        const finalJeopardyCurrentScoreEl = document.getElementById('final-jeopardy-current-score');
+        const finalWagerInput = document.getElementById('final-wager-input');
+        const submitFinalWagerBtn = document.getElementById('submit-final-wager-btn');
+
+        const finalJeopardyQuestionModalOverlay = document.getElementById('final-jeopardy-question-modal-overlay');
+        const finalJeopardyQuestionDisplay = document.getElementById('final-jeopardy-question-display');
+        const finalAnswerInput = document.getElementById('final-answer-input');
+        const submitFinalAnswerBtn = document.getElementById('submit-final-answer-btn');
+
+        const gameOverModalOverlay = document.getElementById('game-over-modal-overlay');
+        const finalScoreDisplay = document.getElementById('final-score-display');
+        const finalJeopardyAnswerDisplay = document.getElementById('final-jeopardy-answer-display'); // New element for FJ answer
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const newGameLoadingIndicator = document.getElementById('new-game-loading-indicator'); // For New Game loading
+
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageOkBtn = document.getElementById('message-ok-btn');
+
+        // --- Utility Functions ---
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         * @param {function} [callback] - Optional callback function to execute when OK is clicked.
+         */
+        function showMessageBox(message, callback = null) {
+            messageText.textContent = message;
+            messageBox.style.display = 'block';
+            const okHandler = () => {
+                messageBox.style.display = 'none';
+                messageOkBtn.removeEventListener('click', okHandler);
+                if (callback) {
+                    callback();
+                }
+            };
+            messageOkBtn.addEventListener('click', okHandler);
+        }
+
+        /**
+         * Cleans and normalizes a string for comparison (e.g., lower case, remove punctuation).
+         * @param {string} str - The string to normalize.
+         * @returns {string} The normalized string.
+         */
+        function normalizeString(str) {
+            return str.toLowerCase().replace(/[.,!?;:'"()]/g, '').trim();
+        }
+
+        /**
+         * Updates the displayed score.
+         */
+        function updateScoreDisplay() {
+            playerScoreEl.textContent = `$${score}`;
+        }
+
+        /**
+         * Fetches a Daily Double question from the LLM.
+         * @param {string} category - The category for the question.
+         * @returns {Promise<object|null>} A promise that resolves to an object with question and answer, or null on error.
+         */
+        async function fetchDailyDoubleQuestion(category) {
+            console.log("Fetching Daily Double question for category:", category);
+            loadingIndicator.style.display = 'block'; // Show loading indicator
+            dailyDoubleQuestionText.textContent = 'Generating question...'; // Update text
+            wagerInput.style.display = 'none';
+            submitWagerBtn.style.display = 'none';
+
+            let chatHistory = [];
+            const prompt = `Generate a challenging Jeopardy-style question and its answer for the category "${category}". The answer should be concise. Respond with a JSON object like this: {"question": "Your question here?", "answer": "Your answer here"}`;
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = {
+                contents: chatHistory,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "question": { "type": "STRING" },
+                            "answer": { "type": "STRING" }
+                        },
+                        "propertyOrdering": ["question", "answer"]
+                    }
+                }
+            };
+            const apiKey = ""; // Canvas will provide this at runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    const parsedJson = JSON.parse(jsonString);
+                    console.log("LLM Daily Double response:", parsedJson);
+                    return parsedJson;
+                } else {
+                    console.error("LLM Daily Double response structure unexpected:", result);
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error fetching Daily Double question:", error);
+                return null;
+            } finally {
+                loadingIndicator.style.display = 'none'; // Hide loading indicator
+                wagerInput.style.display = 'block';
+                submitWagerBtn.style.display = 'block';
+            }
+        }
+
+        /**
+         * Fetches a complete new set of game questions from the LLM.
+         * @returns {Promise<Array|null>} A promise that resolves to an array of game data, or null on error.
+         */
+        async function fetchNewGameData() {
+            console.log("Attempting to fetch new game data from LLM...");
+            newGameLoadingIndicator.style.display = 'block'; // Show loading indicator
+
+            const prompt = `Generate 5 unique Jeopardy categories. For each category, provide 5 questions and their answers for the following values: 200, 400, 600, 800, 1000. Ensure the questions are challenging and the answers are concise.
+            Respond with a JSON array where each object represents a category, and each category object contains a 'category' string and a 'clues' array. Each clue object within the 'clues' array should have a 'question' string, an 'answer' string, and a 'value' number.
+            Example JSON structure:
+            [
+              {
+                "category": "Category Name 1",
+                "clues": [
+                  {"question": "Question 1 for 200?", "answer": "Answer 1", "value": 200},
+                  {"question": "Question 2 for 400?", "answer": "Answer 2", "value": 400},
+                  // ... up to 1000
+                ]
+              },
+              // ... up to 5 categories
+            ]`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = {
+                contents: chatHistory,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "category": { "type": "STRING" },
+                                "clues": {
+                                    type: "ARRAY",
+                                    items: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            "question": { "type": "STRING" },
+                                            "answer": { "type": "STRING" },
+                                            "value": { "type": "NUMBER" }
+                                        },
+                                        "propertyOrdering": ["question", "answer", "value"]
+                                    }
+                                }
+                            },
+                            "propertyOrdering": ["category", "clues"]
+                        }
+                    }
+                }
+            };
+            const apiKey = ""; // Canvas will provide this at runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    const parsedJson = JSON.parse(jsonString);
+                    console.log("LLM New Game Data response:", parsedJson);
+                    // Basic validation: ensure it has the expected structure and at least one category/clue
+                    if (Array.isArray(parsedJson) && parsedJson.length === 5 && // Expect exactly 5 categories
+                        parsedJson.every(cat => cat.category && Array.isArray(cat.clues) && cat.clues.length === 5 && // Each has 5 clues
+                        cat.clues.every(clue => clue.question && clue.answer && typeof clue.value === 'number'))) {
+                        return parsedJson;
+                    } else {
+                        console.error("LLM New Game Data response structure invalid or incomplete:", parsedJson);
+                        return null; // Return null to indicate fallback to static data
+                    }
+                } else {
+                    console.error("LLM New Game Data response structure unexpected:", result);
+                    return null; // Return null to indicate fallback to static data
+                }
+            } catch (error) {
+                console.error("Error fetching new game data:", error);
+                return null; // Return null to indicate fallback to static data
+            } finally {
+                newGameLoadingIndicator.style.display = 'none'; // Hide loading indicator
+            }
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Initializes the game board with categories and clue boxes.
+         */
+        function initializeBoard() {
+            console.log("Initializing game board...");
+            gameBoardEl.innerHTML = ''; // Clear existing board
+            clueElements = []; // Reset clue elements array
+
+            // Recalculate totalQuestions based on current gameData
+            totalQuestions = gameData.reduce((acc, cat) => acc + cat.clues.length, 0);
+
+            // Randomly determine daily double locations based on new gameData structure
+            dailyDoubleLocations = [];
+            // Ensure there are enough categories and clues before trying to place a daily double
+            if (gameData.length > 0 && gameData[0].clues.length > 0) {
+                for (let i = 0; i < dailyDoubleCount; i++) {
+                    let row, col;
+                    do {
+                        row = Math.floor(Math.random() * gameData[0].clues.length);
+                        col = Math.floor(Math.random() * gameData.length);
+                    } while (dailyDoubleLocations.some(loc => loc.row === row && loc.col === col));
+                    dailyDoubleLocations.push({ row, col });
+                }
+            }
+            console.log("Daily Double locations:", dailyDoubleLocations);
+
+            // First, add all category titles
+            gameData.forEach(category => {
+                const categoryTitleEl = document.createElement('div');
+                categoryTitleEl.classList.add('category-title');
+                categoryTitleEl.textContent = category.category;
+                gameBoardEl.appendChild(categoryTitleEl);
+            });
+
+            // Then, add clues row by row (value by value) across categories
+            // Assuming all categories have the same number of clues and values ($200, $400, etc.)
+            const numCluesPerCategory = gameData.length > 0 ? gameData[0].clues.length : 0;
+            for (let rowIndex = 0; rowIndex < numCluesPerCategory; rowIndex++) {
+                gameData.forEach((category, colIndex) => {
+                    const clue = category.clues[rowIndex]; // Get the clue for this row index (value) and category
+                    const clueBox = document.createElement('div');
+                    clueBox.classList.add('clue-box');
+                    clueBox.textContent = `$${clue.value}`;
+                    clueBox.dataset.categoryIndex = colIndex; // Store category index
+                    clueBox.dataset.clueIndex = rowIndex;    // Store clue index within that category
+                    clueBox.addEventListener('click', handleClueClick);
+                    gameBoardEl.appendChild(clueBox);
+                    clueElements.push(clueBox); // Store reference
+                });
+            }
+
+            updateScoreDisplay(); // Initialize score display
+            console.log("Game board initialized with correct layout.");
+        }
+
+        /**
+         * Handles the click event on a clue box.
+         * @param {Event} event - The click event.
+         */
+        async function handleClueClick(event) {
+            const clickedClueBox = event.target;
+            if (clickedClueBox.classList.contains('disabled')) {
+                console.log("Clue already answered.");
+                return; // Do nothing if already answered
+            }
+
+            const categoryIndex = parseInt(clickedClueBox.dataset.categoryIndex);
+            const clueIndex = parseInt(clickedClueBox.dataset.clueIndex);
+            currentClue = gameData[categoryIndex].clues[clueIndex];
+            // Ensure currentClue explicitly has the correct category name for display in modals
+            currentClue.category = gameData[categoryIndex].category;
+
+            // Apply flash animation
+            clickedClueBox.classList.add('active-selection');
+
+            // Mark the clicked clue as disabled after the animation plays
+            setTimeout(() => {
+                clickedClueBox.classList.remove('active-selection');
+                clickedClueBox.classList.add('disabled');
+            }, 400); // Match this timeout with the animation duration (0.4s)
+
+
+            answeredQuestionsCount++;
+            console.log(`Clue clicked: Category '${currentClue.category}', Value $${currentClue.value}. Answered count: ${answeredQuestionsCount} / ${totalQuestions}`);
+
+            // Check for Daily Double
+            const isCurrentDailyDouble = dailyDoubleLocations.some(loc => loc.row === clueIndex && loc.col === categoryIndex);
+
+            if (isCurrentDailyDouble) {
+                isDailyDouble = true;
+                dailyDoubleCurrentScoreEl.textContent = `$${score}`;
+                dailyDoubleModalOverlay.classList.add('active');
+                console.log("Daily Double hit!");
+
+                // Attempt to fetch LLM question for daily double
+                const llmQuestion = await fetchDailyDoubleQuestion(currentClue.category); // Use currentClue.category
+                if (llmQuestion) {
+                    currentClue.question = llmQuestion.question; // Override with LLM question
+                    currentClue.answer = llmQuestion.answer; // Override with LLM answer
+                    dailyDoubleQuestionText.textContent = `Get ready for your Daily Double!`;
+                } else {
+                    dailyDoubleQuestionText.textContent = `A Daily Double! (Using original question as AI generation is unavailable)`;
+                }
+
+                wagerInput.value = ''; // Clear previous wager
+                wagerInput.focus();
+            } else {
+                isDailyDouble = false;
+                // Set modal category directly from currentClue for accuracy
+                modalCategoryEl.textContent = currentClue.category;
+                modalQuestionEl.textContent = currentClue.question;
+                answerInput.value = ''; // Clear previous answer
+                questionModalOverlay.classList.add('active');
+                answerInput.focus();
+            }
+        }
+
+        /**
+         * Handles submitting a wager for Daily Double or Final Jeopardy.
+         * @param {HTMLInputElement} wagerInputEl - The wager input element.
+         * @param {Function} onSubmit - Callback function after valid wager submission.
+         * @returns {boolean} True if wager is valid and submitted, false otherwise.
+         */
+        function handleSubmitWager(wagerInputEl, onSubmit) {
+            const wager = parseInt(wagerInputEl.value);
+            const maxBoardValue = 1000; // Assuming 1000 is the max single clue value
+
+            let isValidWager = true;
+            let errorMessage = '';
+
+            if (isDailyDouble) {
+                const effectiveMaxWager = Math.max(score, maxBoardValue); // Can wager up to current score or max value on board
+                console.log(`Daily Double Wager: Entered ${wager}, Max Allowed: $${effectiveMaxWager}`);
+                if (isNaN(wager) || wager < 1 || wager > effectiveMaxWager) {
+                    errorMessage = `Please enter a wager between $1 and $${effectiveMaxWager}.`;
+                    isValidWager = false;
+                }
+            } else if (isFinalJeopardy) { // Final Jeopardy wager
+                 const finalJeopardyMaxWager = Math.max(0, score); // Can only wager up to current score, or 0 if negative
+                 console.log(`Final Jeopardy Wager: Entered ${wager}, Max Allowed: $${finalJeopardyMaxWager}`);
+                 if (isNaN(wager) || wager < 0 || wager > finalJeopardyMaxWager) {
+                    errorMessage = `Please enter a wager between $0 and $${finalJeopardyMaxWager}.`;
+                    isValidWager = false;
+                }
+            }
+
+
+            if (!isValidWager) {
+                showMessageBox(errorMessage, () => {
+                    wagerInputEl.focus();
+                });
+                return false;
+            }
+
+            currentWager = wager;
+            console.log(`Wager accepted: $${currentWager}`);
+            onSubmit();
+            return true;
+        }
+
+        /**
+         * Handles submitting the answer for a regular question.
+         */
+        function handleSubmitAnswer() {
+            const userAnswer = normalizeString(answerInput.value);
+            const correctAnswer = normalizeString(currentClue.answer);
+
+            questionModalOverlay.classList.remove('active'); // Close modal immediately
+
+            if (userAnswer === correctAnswer) {
+                score += currentClue.value;
+                showMessageBox(`Correct! You earned $${currentClue.value}.`, checkGameEnd);
+                console.log(`Correct! Score: ${score}`);
+            } else {
+                score -= currentClue.value;
+                showMessageBox(`Incorrect! The correct answer was "${currentClue.answer}". You lost $${currentClue.value}.`, checkGameEnd);
+                console.log(`Incorrect! Score: ${score}`);
+            }
+            updateScoreDisplay();
+        }
+
+        /**
+         * Handles submitting the answer for Daily Double.
+         */
+        function handleSubmitDailyDoubleAnswer() {
+            const userAnswer = normalizeString(answerInput.value);
+            const correctAnswer = normalizeString(currentClue.answer);
+
+            questionModalOverlay.classList.remove('active'); // Close modal immediately
+
+            if (userAnswer === correctAnswer) {
+                score += currentWager;
+                showMessageBox(`Correct! You won your wager of $${currentWager}.`, checkGameEnd);
+                console.log(`Daily Double Correct! Score: ${score}`);
+            } else {
+                score -= currentWager;
+                showMessageBox(`Incorrect! The correct answer was "${currentClue.answer}". You lost your wager of $${currentWager}.`, checkGameEnd);
+                console.log(`Daily Double Incorrect! Score: ${score}`);
+            }
+            updateScoreDisplay();
+        }
+
+        /**
+         * Handles submitting the wager for Final Jeopardy.
+         */
+        function handleSubmitFinalWager() {
+            console.log("Attempting to submit Final Jeopardy wager.");
+             if (handleSubmitWager(finalWagerInput, () => {
+                console.log("Final Jeopardy wager valid. Closing wager modal.");
+                finalJeopardyModalOverlay.classList.remove('active');
+                displayFinalJeopardyQuestion();
+            })) {
+                // Wager handled successfully, proceed to question
+                console.log("Final Jeopardy wager submitted successfully.");
+            } else {
+                console.log("Final Jeopardy wager invalid.");
+            }
+        }
+
+        /**
+         * Displays the Final Jeopardy question after wager is submitted.
+         */
+        function displayFinalJeopardyQuestion() {
+            console.log("Displaying Final Jeopardy question phase.");
+            // Placeholder Final Jeopardy question - In a real game, this would be dynamic
+            const finalJeopardyData = {
+                category: "WORLD CAPITALS",
+                question: "This capital city is the only one in the world that straddles two continents.",
+                answer: "Istanbul"
+            };
+            currentClue = finalJeopardyData; // Set currentClue for Final Jeopardy
+
+            finalJeopardyQuestionDisplay.textContent = currentClue.question;
+            finalAnswerInput.value = '';
+            finalJeopardyQuestionModalOverlay.classList.add('active');
+            finalAnswerInput.focus();
+            console.log("Final Jeopardy Question modal activated.");
+        }
+
+        /**
+         * Handles submitting the answer for Final Jeopardy.
+         */
+        function handleSubmitFinalAnswer() {
+            console.log("Attempting to submit Final Jeopardy answer.");
+            const userAnswer = normalizeString(finalAnswerInput.value);
+            const correctAnswer = normalizeString(currentClue.answer);
+
+            finalJeopardyQuestionModalOverlay.classList.remove('active'); // Close modal immediately
+
+            if (userAnswer === correctAnswer) {
+                score += currentWager;
+                console.log(`Final Jeopardy Correct! Final Score: ${score}`);
+            } else {
+                score -= currentWager;
+                console.log(`Final Jeopardy Incorrect! Final Score: ${score}`);
+            }
+            updateScoreDisplay(); // Update score one last time
+
+            // Show game over with results
+            showGameOver(userAnswer === correctAnswer, currentClue.answer);
+        }
+
+        /**
+         * Checks if the game should end (all questions answered).
+         */
+        function checkGameEnd() {
+            console.log(`Checking game end. Answered: ${answeredQuestionsCount}, Total: ${totalQuestions}`);
+            if (answeredQuestionsCount >= totalQuestions) {
+                isFinalJeopardy = true;
+                startFinalJeopardy();
+                console.log("All questions answered. Starting Final Jeopardy.");
+            }
+        }
+
+        /**
+         * Initiates the Final Jeopardy round.
+         */
+        function startFinalJeopardy() {
+            console.log("Initiating Final Jeopardy round setup.");
+            // You can randomly pick a category for Final Jeopardy
+            const randomCategoryIndex = Math.floor(Math.random() * gameData.length);
+            const finalCategory = gameData[randomCategoryIndex].category;
+
+            finalJeopardyCategoryDisplay.textContent = finalCategory;
+            finalJeopardyCurrentScoreEl.textContent = `$${score}`;
+            
+            // Set max wager for input element
+            finalWagerInput.max = Math.max(0, score); // Max wager is current score, or 0 if score is negative
+            finalWagerInput.value = Math.max(0, score); // Pre-fill with current score or 0
+
+            finalJeopardyModalOverlay.classList.add('active');
+            finalWagerInput.focus();
+            console.log("Final Jeopardy wager modal activated.");
+        }
+
+        /**
+         * Displays the game over screen with final results.
+         * @param {boolean} isCorrect - True if the final Jeopardy answer was correct.
+         * @param {string} correctAnswer - The correct answer to Final Jeopardy.
+         */
+        function showGameOver(isCorrect, correctAnswer) {
+            console.log("Displaying Game Over screen.");
+            let resultText = isCorrect ? "You were CORRECT!" : "You were INCORRECT.";
+            finalJeopardyAnswerDisplay.textContent = `${resultText} The correct answer was: "${correctAnswer}".`;
+            finalScoreDisplay.textContent = `Your final score is $${score}!`;
+            gameOverModalOverlay.classList.add('active');
+            console.log("Game Over. Final score:", score);
+        }
+
+        /**
+         * Resets the game to its initial state, including fetching new questions.
+         */
+        async function resetGame() {
+            console.log("Resetting game...");
+            score = 0;
+            answeredQuestionsCount = 0;
+            currentClue = null;
+            currentWager = 0;
+            isDailyDouble = false;
+            isFinalJeopardy = false;
+            dailyDoubleLocations = [];
+
+            // Hide all modals
+            questionModalOverlay.classList.remove('active');
+            dailyDoubleModalOverlay.classList.remove('active');
+            finalJeopardyModalOverlay.classList.remove('active');
+            finalJeopardyQuestionModalOverlay.classList.remove('active');
+            gameOverModalOverlay.classList.remove('active');
+            messageBox.style.display = 'none';
+
+            // Show loading for new game questions
+            newGameLoadingIndicator.style.display = 'block';
+            console.log("Fetching new questions for the next game...");
+
+            const newQuestions = await fetchNewGameData(); // Attempt to fetch new data
+            if (newQuestions) {
+                gameData = newQuestions; // Update gameData with newly fetched questions
+                console.log("New game data fetched successfully.");
+            } else {
+                // If fetch failed, gameData remains the default static data
+                console.warn("Failed to fetch new game data. Starting with default static questions.");
+            }
+            newGameLoadingIndicator.style.display = 'none'; // Hide loading
+
+            initializeBoard(); // Re-render the board with new (or static) data
+            console.log("Game reset complete with new questions (if fetched).");
+        }
+
+        // --- Event Listeners ---
+        submitAnswerBtn.addEventListener('click', () => {
+            if (isDailyDouble) {
+                handleSubmitDailyDoubleAnswer();
+            } else {
+                handleSubmitAnswer();
+            }
+        });
+
+        answerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (isDailyDouble) {
+                    handleSubmitDailyDoubleAnswer();
+                } else {
+                    handleSubmitAnswer();
+                }
+            }
+        });
+
+        submitWagerBtn.addEventListener('click', () => {
+            if (handleSubmitWager(wagerInput, () => {
+                dailyDoubleModalOverlay.classList.remove('active');
+                modalCategoryEl.textContent = currentClue.category; // Daily Double category
+                modalQuestionEl.textContent = currentClue.question;
+                answerInput.value = '';
+                questionModalOverlay.classList.add('active');
+                answerInput.focus();
+            })) {
+                // Wager handled successfully, proceed to question
+            }
+        });
+
+        wagerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                 if (handleSubmitWager(wagerInput, () => {
+                    dailyDoubleModalOverlay.classList.remove('active');
+                    modalCategoryEl.textContent = currentClue.category; // Daily Double category
+                    modalQuestionEl.textContent = currentClue.question;
+                    answerInput.value = '';
+                    questionModalOverlay.classList.add('active');
+                    answerInput.focus();
+                })) {
+                    // Wager handled successfully, proceed to question
+                }
+            }
+        });
+
+        submitFinalWagerBtn.addEventListener('click', handleSubmitFinalWager);
+        finalWagerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleSubmitFinalWager();
+            }
+        });
+
+        submitFinalAnswerBtn.addEventListener('click', handleSubmitFinalAnswer);
+        finalAnswerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleSubmitFinalAnswer();
+            }
+        });
+
+        playAgainBtn.addEventListener('click', resetGame);
+
+        // Initialize the game board on window load
+        window.onload = async function() {
+            // Attempt to fetch initial game data dynamically. If it fails, static data will be used.
+            const initialGameData = await fetchNewGameData();
+            if (initialGameData) {
+                gameData = initialGameData;
+                console.log("Initial game data fetched dynamically.");
+            } else {
+                console.warn("Failed to fetch initial dynamic game data. Starting with default static questions.");
+            }
+            initializeBoard();
+        };
+
+    </script>
+</body>
+</html>
